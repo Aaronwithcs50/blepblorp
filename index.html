@@ -223,21 +223,28 @@
         let steps = '';
         const n = points.length;
         
-        steps += `Points: `;
-        points.forEach((p, i) => {
-          steps += `(${p.x}, ${p.y})${i < points.length - 1 ? ', ' : ''}\n`;
-        });
-        steps += `\n`;
-
+        steps += `Step 1: Calculate average x\n`;
+        steps += `X = ${points.map(p => p.x).join(' + ')} / ${n}\n`;
         const sumX = points.reduce((sum, p) => sum + p.x, 0);
-        const sumY = points.reduce((sum, p) => sum + p.y, 0);
+        steps += `X = ${sumX} / ${n}\n`;
         const meanX = sumX / n;
-        const meanY = sumY / n;
+        steps += `X = ${formatNumber(meanX)}\n\n`;
         
-        steps += `Sum of all x values: ${points.map(p => p.x).join(' + ')} = ${sumX}\n`;
-        steps += `Sum of all y values: ${points.map(p => p.y).join(' + ')} = ${sumY}\n`;
-        steps += `Average x: ${sumX} ÷ ${n} = ${formatNumber(meanX)}\n`;
-        steps += `Average y: ${sumY} ÷ ${n} = ${formatNumber(meanY)}\n`;
+        steps += `Step 2: Calculate average y\n`;
+        steps += `Y = ${points.map(p => p.y).join(' + ')} / ${n}\n`;
+        const sumY = points.reduce((sum, p) => sum + p.y, 0);
+        steps += `Y = ${sumY} / ${n}\n`;
+        const meanY = sumY / n;
+        steps += `Y = ${formatNumber(meanY)}\n`;
+        steps += `N = ${n}\n\n`;
+
+        steps += `Step 3: Find distance from each x to average x (x(sub i) - x̅) (for example, x sub i is the x cordinate. x with the line over is the mean for x, same with y but with y)\n`;
+        const xDeviations = points.map(p => `${p.x} - ${formatNumber(meanX)} = ${formatNumber(p.x - meanX)}`).join('\n');
+        steps += `${xDeviations}\n\n`;
+
+        steps += `Step 4: Find distance from each y to average y (y(sub i) - y̅)\n`;
+        const yDeviations = points.map(p => `${p.y} - ${formatNumber(meanY)} = ${formatNumber(p.y - meanY)}`).join('\n');
+        steps += `${yDeviations}\n\n`;
 
         let sumXY = 0;
         let sumX2 = 0;
@@ -250,13 +257,15 @@
         const slope = (n * sumXY - sumX * sumY) / (n * sumX2 - sumX * sumX);
         const intercept = meanY - slope * meanX;
 
-        steps += `\nSlope formula: m = (n × ΣXY - ΣX × ΣY) / (n × ΣX² - ΣX²)\n`;
+        steps += `Step 5: Calculate slope (m)\n`;
+        steps += `m = (n × ΣXY - ΣX × ΣY) / (n × ΣX² - ΣX²)\n`;
         steps += `m = (${n} × ${formatNumber(sumXY)} - ${sumX} × ${sumY}) / (${n} × ${formatNumber(sumX2)} - ${sumX}²)\n`;
-        steps += `m = ${formatNumber(slope)}\n`;
+        steps += `m = ${formatNumber(slope)}\n\n`;
 
-        steps += `\nIntercept formula: b = avg y - m × avg x\n`;
+        steps += `Step 6: Calculate intercept (b)\n`;
+        steps += `b = Y - m × X\n`;
         steps += `b = ${formatNumber(meanY)} - ${formatNumber(slope)} × ${formatNumber(meanX)}\n`;
-        steps += `b = ${formatNumber(intercept)}\n`;
+        steps += `b = ${formatNumber(intercept)}\n\n`;
 
         let ssResidual = 0;
         let ssTotal = 0;
@@ -268,7 +277,9 @@
 
         const rSquared = ssTotal === 0 ? 1 : 1 - ssResidual / ssTotal;
         
-        steps += `\nLine: y = ${formatNumber(slope)}x + ${formatNumber(intercept)}`;
+        steps += `Step 7: Final equation\n`;
+        steps += `y = ${formatNumber(slope)}x + ${formatNumber(intercept)}\n`;
+        steps += `R² = ${formatNumber(rSquared)}`;
         
         return { slope, intercept, rSquared, steps };
       }
