@@ -127,6 +127,24 @@
         </article>
       </section>
 
+      <section id="steps" style="margin-top: 24px; display: none;">
+        <h2 style="font-size: 18px; margin: 0 0 12px;">Calculation Steps</h2>
+        <div class="card" id="stepsContent" style="background: #f8fafc; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 13px; line-height: 1.6; white-space: pre-wrap; word-break: break-word;"></div>
+      </section>
+
+      <section style="margin-top: 24px;">
+        <h2 style="font-size: 18px; margin: 0 0 12px;">Legend</h2>
+        <div class="card" style="background: #f8fafc;">
+          <div style="display: grid; gap: 8px; font-size: 14px;">
+            <div><strong>m</strong> = slope (how steep the line is)</div>
+            <div><strong>b</strong> = intercept (where the line crosses the y-axis)</div>
+            <div><strong>R²</strong> = how well the line fits the data (closer to 1 is better)</div>
+            <div><strong>Σ</strong> = sum (total when you add everything up)</div>
+            <div><strong>÷</strong> = divide</div>
+          </div>
+        </div>
+      </section>
+
       <p class="hint">
         Need at least two points with different x-values.
       </p>
@@ -140,12 +158,15 @@
       const interceptEl = document.getElementById('intercept');
       const rSquaredEl = document.getElementById('rSquared');
       const errorEl = document.getElementById('error');
+      const stepsEl = document.getElementById('steps');
+      const stepsContentEl = document.getElementById('stepsContent');
 
       calculateBtn.addEventListener('click', calculate);
       calculate();
 
       function calculate() {
         errorEl.textContent = '';
+        stepsEl.style.display = 'none';
 
         let points;
         try {
@@ -156,11 +177,14 @@
           return;
         }
 
-        const { slope, intercept, rSquared } = bestFit(points);
+        const { slope, intercept, rSquared, steps } = bestFit(points);
         equationEl.textContent = `y = ${formatNumber(slope)}x + ${formatNumber(intercept)}`;
         slopeEl.textContent = formatNumber(slope);
         interceptEl.textContent = formatNumber(intercept);
         rSquaredEl.textContent = formatNumber(rSquared);
+        
+        stepsContentEl.textContent = steps;
+        stepsEl.style.display = 'block';
       }
 
       function parsePoints(raw) {
@@ -190,24 +214,49 @@
           throw new Error('At least two distinct x values are required.');
         }
 
+        // Sort points by x-value
+        points.sort((a, b) => a.x - b.x);
         return points;
       }
 
       function bestFit(points) {
+        let steps = '';
         const n = points.length;
+        
+        steps += `Points: `;
+        points.forEach((p, i) => {
+          steps += `(${p.x}, ${p.y})${i < points.length - 1 ? ', ' : ''}\n`;
+        });
+        steps += `\n`;
+
         const sumX = points.reduce((sum, p) => sum + p.x, 0);
         const sumY = points.reduce((sum, p) => sum + p.y, 0);
+        const meanX = sumX / n;
         const meanY = sumY / n;
+        
+        steps += `Sum of all x values: ${points.map(p => p.x).join(' + ')} = ${sumX}\n`;
+        steps += `Sum of all y values: ${points.map(p => p.y).join(' + ')} = ${sumY}\n`;
+        steps += `Average x: ${sumX} ÷ ${n} = ${formatNumber(meanX)}\n`;
+        steps += `Average y: ${sumY} ÷ ${n} = ${formatNumber(meanY)}\n`;
 
-        let numerator = 0;
-        let denominator = 0;
+        let sumXY = 0;
+        let sumX2 = 0;
+        
         for (const p of points) {
-          numerator += n * p.x * p.y - sumX * p.y;
-          denominator += n * p.x * p.x - sumX * p.x;
+          sumXY += p.x * p.y;
+          sumX2 += p.x * p.x;
         }
 
-        const slope = numerator / denominator;
-        const intercept = (sumY - slope * sumX) / n;
+        const slope = (n * sumXY - sumX * sumY) / (n * sumX2 - sumX * sumX);
+        const intercept = meanY - slope * meanX;
+
+        steps += `\nSlope formula: m = (n × ΣXY - ΣX × ΣY) / (n × ΣX² - ΣX²)\n`;
+        steps += `m = (${n} × ${formatNumber(sumXY)} - ${sumX} × ${sumY}) / (${n} × ${formatNumber(sumX2)} - ${sumX}²)\n`;
+        steps += `m = ${formatNumber(slope)}\n`;
+
+        steps += `\nIntercept formula: b = avg y - m × avg x\n`;
+        steps += `b = ${formatNumber(meanY)} - ${formatNumber(slope)} × ${formatNumber(meanX)}\n`;
+        steps += `b = ${formatNumber(intercept)}\n`;
 
         let ssResidual = 0;
         let ssTotal = 0;
@@ -218,7 +267,10 @@
         }
 
         const rSquared = ssTotal === 0 ? 1 : 1 - ssResidual / ssTotal;
-        return { slope, intercept, rSquared };
+        
+        steps += `\nLine: y = ${formatNumber(slope)}x + ${formatNumber(intercept)}`;
+        
+        return { slope, intercept, rSquared, steps };
       }
 
       function formatNumber(value) {
