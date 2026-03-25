@@ -1,0 +1,239 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Line of Best Fit Calculator</title>
+    <style>
+      :root {
+        color-scheme: light;
+      }
+      body {
+        margin: 0;
+        font-family: Arial, sans-serif;
+        background: #f8fafc;
+        color: #0f172a;
+      }
+      .wrap {
+        max-width: 760px;
+        margin: 32px auto;
+        padding: 0 16px 24px;
+      }
+      h1 {
+        margin: 0 0 8px;
+        font-size: 30px;
+      }
+      .sub {
+        margin: 0 0 16px;
+        color: #334155;
+      }
+      textarea,
+      button {
+        width: 100%;
+        box-sizing: border-box;
+        border-radius: 10px;
+      }
+      textarea {
+        min-height: 180px;
+        border: 1px solid #cbd5e1;
+        background: #fff;
+        padding: 12px;
+        resize: vertical;
+        font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+        font-size: 14px;
+        line-height: 1.4;
+      }
+      button {
+        border: none;
+        margin-top: 10px;
+        padding: 12px;
+        background: #2563eb;
+        color: white;
+        font-weight: 700;
+        cursor: pointer;
+      }
+      .error {
+        color: #b91c1c;
+        margin-top: 8px;
+        min-height: 20px;
+      }
+      .grid {
+        margin-top: 14px;
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 10px;
+      }
+      .card {
+        background: white;
+        border: 1px solid #cbd5e1;
+        border-radius: 10px;
+        padding: 10px;
+      }
+      .label {
+        font-size: 11px;
+        color: #475569;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+        font-weight: 700;
+      }
+      .value {
+        margin-top: 4px;
+        font-size: 18px;
+      }
+      .hint {
+        margin-top: 14px;
+        background: #fff;
+        border: 1px solid #cbd5e1;
+        border-radius: 10px;
+        padding: 10px;
+        color: #334155;
+      }
+      code {
+        background: #e2e8f0;
+        border-radius: 5px;
+        padding: 1px 5px;
+      }
+    </style>
+  </head>
+  <body>
+    <main class="wrap">
+      <h1>Line of Best Fit Calculator</h1>
+      <p class="sub">Enter one point per line as <code>x,y</code>, then click Calculate.</p>
+
+      <textarea id="points">1,2
+2,3
+3,5
+4,4
+5,6</textarea>
+      <button id="calculate">Calculate</button>
+      <div class="error" id="error"></div>
+
+      <section class="grid">
+        <article class="card">
+          <div class="label">Equation</div>
+          <div class="value" id="equation">y = ?x + ?</div>
+        </article>
+        <article class="card">
+          <div class="label">Slope (m)</div>
+          <div class="value" id="slope">-</div>
+        </article>
+        <article class="card">
+          <div class="label">Intercept (b)</div>
+          <div class="value" id="intercept">-</div>
+        </article>
+        <article class="card">
+          <div class="label">R²</div>
+          <div class="value" id="rSquared">-</div>
+        </article>
+      </section>
+
+      <p class="hint">
+        Need at least two points with different x-values.
+      </p>
+    </main>
+
+    <script>
+      const pointsInput = document.getElementById('points');
+      const calculateBtn = document.getElementById('calculate');
+      const equationEl = document.getElementById('equation');
+      const slopeEl = document.getElementById('slope');
+      const interceptEl = document.getElementById('intercept');
+      const rSquaredEl = document.getElementById('rSquared');
+      const errorEl = document.getElementById('error');
+
+      calculateBtn.addEventListener('click', calculate);
+      calculate();
+
+      function calculate() {
+        errorEl.textContent = '';
+
+        let points;
+        try {
+          points = parsePoints(pointsInput.value);
+        } catch (error) {
+          setEmptyResults();
+          errorEl.textContent = error.message;
+          return;
+        }
+
+        const { slope, intercept, rSquared } = bestFit(points);
+        equationEl.textContent = `y = ${formatNumber(slope)}x + ${formatNumber(intercept)}`;
+        slopeEl.textContent = formatNumber(slope);
+        interceptEl.textContent = formatNumber(intercept);
+        rSquaredEl.textContent = formatNumber(rSquared);
+      }
+
+      function parsePoints(raw) {
+        const lines = raw
+          .split('\n')
+          .map((line) => line.trim())
+          .filter(Boolean);
+
+        if (lines.length < 2) {
+          throw new Error('Please enter at least two points.');
+        }
+
+        const points = lines.map((line, index) => {
+          const [xRaw, yRaw] = line.split(',').map((part) => part && part.trim());
+          const x = Number(xRaw);
+          const y = Number(yRaw);
+
+          if (!Number.isFinite(x) || !Number.isFinite(y)) {
+            throw new Error(`Invalid point on line ${index + 1}. Use x,y.`);
+          }
+
+          return { x, y };
+        });
+
+        const uniqueX = new Set(points.map((p) => p.x));
+        if (uniqueX.size < 2) {
+          throw new Error('At least two distinct x values are required.');
+        }
+
+        return points;
+      }
+
+      function bestFit(points) {
+        const n = points.length;
+        const sumX = points.reduce((sum, p) => sum + p.x, 0);
+        const sumY = points.reduce((sum, p) => sum + p.y, 0);
+        const meanY = sumY / n;
+
+        let numerator = 0;
+        let denominator = 0;
+        for (const p of points) {
+          numerator += n * p.x * p.y - sumX * p.y;
+          denominator += n * p.x * p.x - sumX * p.x;
+        }
+
+        const slope = numerator / denominator;
+        const intercept = (sumY - slope * sumX) / n;
+
+        let ssResidual = 0;
+        let ssTotal = 0;
+        for (const p of points) {
+          const predicted = slope * p.x + intercept;
+          ssResidual += (p.y - predicted) ** 2;
+          ssTotal += (p.y - meanY) ** 2;
+        }
+
+        const rSquared = ssTotal === 0 ? 1 : 1 - ssResidual / ssTotal;
+        return { slope, intercept, rSquared };
+      }
+
+      function formatNumber(value) {
+        return Number(value)
+          .toFixed(6)
+          .replace(/\.0+$/, '')
+          .replace(/(\.\d*?)0+$/, '$1');
+      }
+
+      function setEmptyResults() {
+        equationEl.textContent = 'y = ?x + ?';
+        slopeEl.textContent = '-';
+        interceptEl.textContent = '-';
+        rSquaredEl.textContent = '-';
+      }
+    </script>
+  </body>
+</html>
