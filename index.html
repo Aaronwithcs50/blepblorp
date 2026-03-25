@@ -246,23 +246,51 @@
         const yDeviations = points.map(p => `${p.y} - ${formatNumber(meanY)} = ${formatNumber(p.y - meanY)}`).join('\n');
         steps += `${yDeviations}\n\n`;
 
-        let sumXY = 0;
-        let sumX2 = 0;
-        
-        for (const p of points) {
-          sumXY += p.x * p.y;
-          sumX2 += p.x * p.x;
-        }
+        steps += `Step 5: Calculate (x(sub i) - x̅)(y(sub i) - y̅) for each point\n`;
+        let sumProducts = 0;
+        let sumXSquares = 0;
+        const products = points.map((p, i) => {
+          const xDev = p.x - meanX;
+          const yDev = p.y - meanY;
+          const product = xDev * yDev;
+          sumProducts += product;
+          sumXSquares += xDev * xDev;
+          return `@i=${i+1} => (${formatNumber(xDev)})(${formatNumber(yDev)}) = ${formatNumber(product)}`;
+        }).join('\n');
+        steps += `${products}\n\n`;
 
-        const slope = (n * sumXY - sumX * sumY) / (n * sumX2 - sumX * sumX);
+        steps += `Step 6: Add all answers from step 5\n`;
+        steps += `Sum of products = ${formatNumber(sumProducts)}\n\n`;
+
+        steps += `Step 7: Square all the answers from step 5\n`;
+        const productSquares = points.map((p, i) => {
+          const xDev = p.x - meanX;
+          const yDev = p.y - meanY;
+          const product = xDev * yDev;
+          const square = product * product;
+          return `@i=${i+1} => (${formatNumber(product)})² = ${formatNumber(square)}`;
+        }).join('\n');
+        steps += `${productSquares}\n`;
+        const sumProductSquares = points.reduce((sum, p) => {
+          const xDev = p.x - meanX;
+          const yDev = p.y - meanY;
+          const product = xDev * yDev;
+          return sum + product * product;
+        }, 0);
+        steps += `Sum of squares = ${formatNumber(sumProductSquares)}\n\n`;
+
+        steps += `Step 8: Sum of (x(sub i) - x̅)²\n`;
+        steps += `Sum of (x(sub i) - x̅)² = ${formatNumber(sumXSquares)}\n\n`;
+
+        const slope = sumProducts / sumXSquares;
         const intercept = meanY - slope * meanX;
 
-        steps += `Step 5: Calculate slope (m)\n`;
-        steps += `m = (n × ΣXY - ΣX × ΣY) / (n × ΣX² - ΣX²)\n`;
-        steps += `m = (${n} × ${formatNumber(sumXY)} - ${sumX} × ${sumY}) / (${n} × ${formatNumber(sumX2)} - ${sumX}²)\n`;
+        steps += `Step 9: Calculate slope (m)\n`;
+        steps += `m = sum of products / sum of (x(sub i) - x̅)²\n`;
+        steps += `m = ${formatNumber(sumProducts)} / ${formatNumber(sumXSquares)}\n`;
         steps += `m = ${formatNumber(slope)}\n\n`;
 
-        steps += `Step 6: Calculate intercept (b)\n`;
+        steps += `Step 10: Calculate intercept (b)\n`;
         steps += `b = Y - m × X\n`;
         steps += `b = ${formatNumber(meanY)} - ${formatNumber(slope)} × ${formatNumber(meanX)}\n`;
         steps += `b = ${formatNumber(intercept)}\n\n`;
@@ -277,7 +305,7 @@
 
         const rSquared = ssTotal === 0 ? 1 : 1 - ssResidual / ssTotal;
         
-        steps += `Step 7: Final equation\n`;
+        steps += `Step 11: Final equation\n`;
         steps += `y = ${formatNumber(slope)}x + ${formatNumber(intercept)}\n`;
         steps += `R² = ${formatNumber(rSquared)}`;
         
