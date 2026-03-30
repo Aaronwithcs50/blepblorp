@@ -7,171 +7,327 @@
     <style>
       :root {
         color-scheme: light;
+        --bg: #f1f5f9;
+        --surface: #ffffff;
+        --surface-soft: #f8fafc;
+        --text: #0f172a;
+        --muted: #475569;
+        --border: #cbd5e1;
+        --brand: #1d4ed8;
+        --brand-hover: #1e40af;
+        --success: #166534;
+        --error: #b91c1c;
+        --radius: 12px;
       }
+
+      * {
+        box-sizing: border-box;
+      }
+
       body {
         margin: 0;
-        font-family: Arial, sans-serif;
-        background: #f8fafc;
-        color: #0f172a;
+        font-family: Inter, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+        background: radial-gradient(circle at top, #e2e8f0 0%, var(--bg) 45%);
+        color: var(--text);
       }
+
       .wrap {
-        max-width: 760px;
+        max-width: 960px;
         margin: 32px auto;
-        padding: 0 16px 24px;
+        padding: 0 16px 28px;
       }
+
+      .panel {
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: 16px;
+        box-shadow: 0 10px 30px rgb(15 23 42 / 8%);
+        padding: 20px;
+      }
+
       h1 {
-        margin: 0 0 8px;
-        font-size: 30px;
+        margin: 0;
+        font-size: clamp(1.5rem, 2.8vw, 2rem);
       }
+
+      h2 {
+        font-size: 1.05rem;
+        margin: 0 0 12px;
+      }
+
       .sub {
-        margin: 0 0 16px;
-        color: #334155;
+        margin: 8px 0 16px;
+        color: var(--muted);
       }
-      textarea,
-      button {
-        width: 100%;
-        box-sizing: border-box;
+
+      .toolbar {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        margin-bottom: 10px;
+      }
+
+      .btn {
+        border: 1px solid transparent;
         border-radius: 10px;
+        padding: 10px 14px;
+        font-weight: 600;
+        cursor: pointer;
       }
+
+      .btn-primary {
+        background: var(--brand);
+        color: white;
+      }
+
+      .btn-primary:hover {
+        background: var(--brand-hover);
+      }
+
+      .btn-secondary {
+        background: var(--surface-soft);
+        border-color: var(--border);
+        color: var(--text);
+      }
+
+      .btn-secondary:hover {
+        background: #e2e8f0;
+      }
+
       textarea {
-        min-height: 180px;
-        border: 1px solid #cbd5e1;
+        width: 100%;
+        min-height: 190px;
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
         background: #fff;
         padding: 12px;
         resize: vertical;
         font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
         font-size: 14px;
-        line-height: 1.4;
+        line-height: 1.45;
       }
-      button {
-        border: none;
-        margin-top: 10px;
-        padding: 12px;
-        background: #2563eb;
-        color: white;
-        font-weight: 700;
-        cursor: pointer;
-      }
-      .error {
-        color: #b91c1c;
+
+      .meta-row {
         margin-top: 8px;
-        min-height: 20px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 8px;
       }
+
+      .status {
+        color: var(--muted);
+        font-size: 13px;
+      }
+
+      .error {
+        color: var(--error);
+        margin-top: 10px;
+        min-height: 20px;
+        font-weight: 600;
+      }
+
       .grid {
-        margin-top: 14px;
+        margin-top: 16px;
         display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
         gap: 10px;
       }
+
       .card {
-        background: white;
-        border: 1px solid #cbd5e1;
-        border-radius: 10px;
-        padding: 10px;
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        padding: 12px;
       }
+
+      .card-soft {
+        background: var(--surface-soft);
+      }
+
       .label {
         font-size: 11px;
-        color: #475569;
+        color: var(--muted);
         text-transform: uppercase;
         letter-spacing: 0.04em;
         font-weight: 700;
       }
+
       .value {
-        margin-top: 4px;
-        font-size: 18px;
+        margin-top: 6px;
+        font-size: 20px;
+        font-weight: 700;
       }
+
+      .sections {
+        display: grid;
+        grid-template-columns: 2fr 1fr;
+        gap: 12px;
+        margin-top: 18px;
+      }
+
+      .steps-body {
+        font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+        font-size: 13px;
+        line-height: 1.55;
+        white-space: pre-wrap;
+        word-break: break-word;
+      }
+
+      .legend-list {
+        display: grid;
+        gap: 8px;
+        font-size: 14px;
+      }
+
       .hint {
         margin-top: 14px;
-        background: #fff;
-        border: 1px solid #cbd5e1;
-        border-radius: 10px;
-        padding: 10px;
-        color: #334155;
+        color: var(--muted);
+        border-left: 3px solid var(--border);
+        padding-left: 10px;
       }
+
+      .ok {
+        color: var(--success);
+      }
+
       code {
         background: #e2e8f0;
         border-radius: 5px;
         padding: 1px 5px;
       }
+
+      @media (max-width: 760px) {
+        .sections {
+          grid-template-columns: 1fr;
+        }
+
+        .meta-row {
+          flex-direction: column;
+          align-items: flex-start;
+        }
+      }
     </style>
   </head>
   <body>
     <main class="wrap">
-      <h1>Line of Best Fit Calculator</h1>
-      <p class="sub">Enter one point per line as <code>x,y</code>, then click Calculate.</p>
+      <section class="panel">
+        <h1>Line of Best Fit Calculator</h1>
+        <p class="sub">Enter one point per line as <code>x,y</code>. Results update as you type.</p>
 
-      <textarea id="points">1,2
+        <div class="toolbar">
+          <button class="btn btn-primary" id="calculate" type="button">Calculate</button>
+          <button class="btn btn-secondary" id="loadSample" type="button">Load sample data</button>
+          <button class="btn btn-secondary" id="clear" type="button">Clear input</button>
+        </div>
+
+        <textarea id="points" spellcheck="false">1,2
 2,3
 3,5
 4,4
 5,6</textarea>
-      <button id="calculate">Calculate</button>
-      <div class="error" id="error"></div>
 
-      <section class="grid">
-        <article class="card">
-          <div class="label">Equation</div>
-          <div class="value" id="equation">y = ?x + ?</div>
-        </article>
-        <article class="card">
-          <div class="label">Slope (m)</div>
-          <div class="value" id="slope">-</div>
-        </article>
-        <article class="card">
-          <div class="label">Intercept (b)</div>
-          <div class="value" id="intercept">-</div>
-        </article>
-        <article class="card">
-          <div class="label">R²</div>
-          <div class="value" id="rSquared">-</div>
-        </article>
-        <article class="card">
-          <div class="label">Correlation (r)</div>
-          <div class="value" id="correlation">-</div>
-        </article>
-      </section>
-
-      <section id="steps" style="margin-top: 24px; display: none;">
-        <h2 style="font-size: 18px; margin: 0 0 12px;">Calculation Steps</h2>
-        <div class="card" id="stepsContent" style="background: #f8fafc; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 13px; line-height: 1.6; white-space: pre-wrap; word-break: break-word;"></div>
-      </section>
-
-      <section style="margin-top: 24px;">
-        <h2 style="font-size: 18px; margin: 0 0 12px;">Legend</h2>
-        <div class="card" style="background: #f8fafc;">
-          <div style="display: grid; gap: 8px; font-size: 14px;">
-            <div><strong>m</strong> = slope (how steep the line is)</div>
-            <div><strong>b</strong> = intercept (where the line crosses the y-axis)</div>
-            <div><strong>R²</strong> = how well the line fits the data (closer to 1 is better)</div>
-            <div><strong>r</strong> = correlation coefficient (between -1 and 1)</div>
-            <div><strong>Σ</strong> = sum (total when you add everything up)</div>
-            <div><strong>÷</strong> = divide</div>
-          </div>
+        <div class="meta-row">
+          <div class="status" id="status">5 valid points</div>
+          <div class="status">Tip: press <code>Ctrl/Cmd + Enter</code> to calculate</div>
         </div>
-      </section>
 
-      <p class="hint">
-        Need at least two points with different x-values.
-      </p>
+        <div class="error" id="error" role="alert" aria-live="polite"></div>
+
+        <section class="grid" aria-label="Results">
+          <article class="card">
+            <div class="label">Equation</div>
+            <div class="value" id="equation">y = ?x + ?</div>
+          </article>
+          <article class="card">
+            <div class="label">Slope (m)</div>
+            <div class="value" id="slope">-</div>
+          </article>
+          <article class="card">
+            <div class="label">Intercept (b)</div>
+            <div class="value" id="intercept">-</div>
+          </article>
+          <article class="card">
+            <div class="label">R²</div>
+            <div class="value" id="rSquared">-</div>
+          </article>
+          <article class="card">
+            <div class="label">Correlation (r)</div>
+            <div class="value" id="correlation">-</div>
+          </article>
+        </section>
+
+        <section class="sections">
+          <section id="steps" style="display: none;">
+            <h2>Calculation Steps</h2>
+            <div class="card card-soft steps-body" id="stepsContent"></div>
+          </section>
+
+          <section>
+            <h2>Legend</h2>
+            <div class="card card-soft">
+              <div class="legend-list">
+                <div><strong>m</strong> = slope (how steep the line is)</div>
+                <div><strong>b</strong> = intercept (where the line crosses the y-axis)</div>
+                <div><strong>R²</strong> = fit quality (closer to 1 is better)</div>
+                <div><strong>r</strong> = correlation coefficient (between -1 and 1)</div>
+                <div><strong>Σ</strong> = sum</div>
+                <div><strong>÷</strong> = divide</div>
+              </div>
+            </div>
+          </section>
+        </section>
+
+        <p class="hint">Need at least two points with different x-values.</p>
+      </section>
     </main>
 
     <script>
       const pointsInput = document.getElementById('points');
       const calculateBtn = document.getElementById('calculate');
+      const loadSampleBtn = document.getElementById('loadSample');
+      const clearBtn = document.getElementById('clear');
       const equationEl = document.getElementById('equation');
       const slopeEl = document.getElementById('slope');
       const interceptEl = document.getElementById('intercept');
       const rSquaredEl = document.getElementById('rSquared');
       const correlationEl = document.getElementById('correlation');
       const errorEl = document.getElementById('error');
+      const statusEl = document.getElementById('status');
       const stepsEl = document.getElementById('steps');
       const stepsContentEl = document.getElementById('stepsContent');
 
+      const sampleData = `1,2\n2,3\n3,5\n4,4\n5,6`;
+
       calculateBtn.addEventListener('click', calculate);
+      loadSampleBtn.addEventListener('click', () => {
+        pointsInput.value = sampleData;
+        calculate();
+      });
+      clearBtn.addEventListener('click', () => {
+        pointsInput.value = '';
+        calculate();
+        pointsInput.focus();
+      });
+
+      let calcTimer;
+      pointsInput.addEventListener('input', () => {
+        clearTimeout(calcTimer);
+        calcTimer = setTimeout(calculate, 220);
+      });
+
+      pointsInput.addEventListener('keydown', (event) => {
+        if ((event.ctrlKey || event.metaKey) && event.key === 'Enter') {
+          event.preventDefault();
+          calculate();
+        }
+      });
+
       calculate();
 
       function calculate() {
         errorEl.textContent = '';
+        statusEl.classList.remove('ok');
         stepsEl.style.display = 'none';
 
         let points;
@@ -180,6 +336,7 @@
         } catch (error) {
           setEmptyResults();
           errorEl.textContent = error.message;
+          statusEl.textContent = 'No valid result yet';
           return;
         }
 
@@ -189,9 +346,11 @@
         interceptEl.textContent = formatNumber(intercept);
         rSquaredEl.textContent = formatNumber(rSquared);
         correlationEl.textContent = formatNumber(correlation);
-        
+
         stepsContentEl.textContent = steps;
         stepsEl.style.display = 'block';
+        statusEl.textContent = `${points.length} valid points`;
+        statusEl.classList.add('ok');
       }
 
       function parsePoints(raw) {
@@ -221,7 +380,6 @@
           throw new Error('At least two distinct x values are required.');
         }
 
-        // Sort points by x-value
         points.sort((a, b) => a.x - b.x);
         return points;
       }
@@ -229,50 +387,54 @@
       function bestFit(points) {
         let steps = '';
         const n = points.length;
-        
+
         steps += `Step 1: Calculate average x\n`;
-        steps += `X = ${points.map(p => p.x).join(' + ')} / ${n}\n`;
+        steps += `X = ${points.map((p) => p.x).join(' + ')} / ${n}\n`;
         const sumX = points.reduce((sum, p) => sum + p.x, 0);
         steps += `X = ${sumX} / ${n}\n`;
         const meanX = sumX / n;
         steps += `X = ${formatNumber(meanX)}\n\n`;
-        
+
         steps += `Step 2: Calculate average y\n`;
-        steps += `Y = ${points.map(p => p.y).join(' + ')} / ${n}\n`;
+        steps += `Y = ${points.map((p) => p.y).join(' + ')} / ${n}\n`;
         const sumY = points.reduce((sum, p) => sum + p.y, 0);
         steps += `Y = ${sumY} / ${n}\n`;
         const meanY = sumY / n;
         steps += `Y = ${formatNumber(meanY)}\n`;
         steps += `N = ${n}\n\n`;
 
-        steps += `Step 3: Find distance from each x to average x (x(sub i) - x̅) (for example, x sub i is the x cordinate. x with the line over is the mean for x, same with y but with y)\n`;
-        const xDeviations = points.map(p => `${p.x} - ${formatNumber(meanX)} = ${formatNumber(p.x - meanX)}`).join('\n');
+        steps += `Step 3: Find distance from each x to average x (x(sub i) - x̅)\n`;
+        const xDeviations = points.map((p) => `${p.x} - ${formatNumber(meanX)} = ${formatNumber(p.x - meanX)}`).join('\n');
         steps += `${xDeviations}\n\n`;
 
         steps += `Step 4: Find distance from each y to average y (y(sub i) - y̅)\n`;
-        const yDeviations = points.map(p => `${p.y} - ${formatNumber(meanY)} = ${formatNumber(p.y - meanY)}`).join('\n');
+        const yDeviations = points.map((p) => `${p.y} - ${formatNumber(meanY)} = ${formatNumber(p.y - meanY)}`).join('\n');
         steps += `${yDeviations}\n\n`;
 
         steps += `Step 5: Calculate (x(sub i) - x̅)(y(sub i) - y̅) for each point\n`;
         let sumProducts = 0;
-        const products = points.map((p, i) => {
-          const xDev = p.x - meanX;
-          const yDev = p.y - meanY;
-          const product = xDev * yDev;
-          sumProducts += product;
-          return `@i=${i+1} => (${formatNumber(xDev)})(${formatNumber(yDev)}) = ${formatNumber(product)}`;
-        }).join('\n');
+        const products = points
+          .map((p, i) => {
+            const xDev = p.x - meanX;
+            const yDev = p.y - meanY;
+            const product = xDev * yDev;
+            sumProducts += product;
+            return `@i=${i + 1} => (${formatNumber(xDev)})(${formatNumber(yDev)}) = ${formatNumber(product)}`;
+          })
+          .join('\n');
         steps += `${products}\n\n`;
 
         steps += `Step 6: Add all answers from step 5\n`;
         steps += `Sum of products = ${formatNumber(sumProducts)}\n\n`;
 
         steps += `Step 7: Square each x-deviation (x(sub i) - x̅)²\n`;
-        const xSquares = points.map((p, i) => {
-          const xDev = p.x - meanX;
-          const square = xDev * xDev;
-          return `@i=${i+1} => (${formatNumber(xDev)})² = ${formatNumber(square)}`;
-        }).join('\n');
+        const xSquares = points
+          .map((p, i) => {
+            const xDev = p.x - meanX;
+            const square = xDev * xDev;
+            return `@i=${i + 1} => (${formatNumber(xDev)})² = ${formatNumber(square)}`;
+          })
+          .join('\n');
         steps += `${xSquares}\n\n`;
 
         steps += `Step 8: Add all squared x-deviations\n`;
@@ -309,7 +471,7 @@
         const rSquared = ssTotal === 0 ? 1 : 1 - ssResidual / ssTotal;
         const correlationDenominator = Math.sqrt(sumXSquares * sumYSquares);
         const correlation = correlationDenominator === 0 ? 0 : sumProducts / correlationDenominator;
-        
+
         steps += `Step 11: Final equation\n`;
         steps += `y = ${formatNumber(slope)}x + ${formatNumber(intercept)}\n`;
         steps += `R² = ${formatNumber(rSquared)}\n\n`;
@@ -317,15 +479,12 @@
         steps += `r = Σ[(x(sub i) - x̅)(y(sub i) - y̅)] / √(Σ(x(sub i) - x̅)² × Σ(y(sub i) - y̅)²)\n`;
         steps += `r = ${formatNumber(sumProducts)} / √(${formatNumber(sumXSquares)} × ${formatNumber(sumYSquares)})\n`;
         steps += `r = ${formatNumber(correlation)}`;
-        
+
         return { slope, intercept, rSquared, correlation, steps };
       }
 
       function formatNumber(value) {
-        return Number(value)
-          .toFixed(6)
-          .replace(/\.0+$/, '')
-          .replace(/(\.\d*?)0+$/, '$1');
+        return Number(value).toFixed(6).replace(/\.0+$/, '').replace(/(\.\d*?)0+$/, '$1');
       }
 
       function setEmptyResults() {
