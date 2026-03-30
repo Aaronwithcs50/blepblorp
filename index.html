@@ -125,6 +125,10 @@
           <div class="label">R²</div>
           <div class="value" id="rSquared">-</div>
         </article>
+        <article class="card">
+          <div class="label">Correlation (r)</div>
+          <div class="value" id="correlation">-</div>
+        </article>
       </section>
 
       <section id="steps" style="margin-top: 24px; display: none;">
@@ -139,6 +143,7 @@
             <div><strong>m</strong> = slope (how steep the line is)</div>
             <div><strong>b</strong> = intercept (where the line crosses the y-axis)</div>
             <div><strong>R²</strong> = how well the line fits the data (closer to 1 is better)</div>
+            <div><strong>r</strong> = correlation coefficient (between -1 and 1)</div>
             <div><strong>Σ</strong> = sum (total when you add everything up)</div>
             <div><strong>÷</strong> = divide</div>
           </div>
@@ -157,6 +162,7 @@
       const slopeEl = document.getElementById('slope');
       const interceptEl = document.getElementById('intercept');
       const rSquaredEl = document.getElementById('rSquared');
+      const correlationEl = document.getElementById('correlation');
       const errorEl = document.getElementById('error');
       const stepsEl = document.getElementById('steps');
       const stepsContentEl = document.getElementById('stepsContent');
@@ -177,11 +183,12 @@
           return;
         }
 
-        const { slope, intercept, rSquared, steps } = bestFit(points);
+        const { slope, intercept, rSquared, correlation, steps } = bestFit(points);
         equationEl.textContent = `y = ${formatNumber(slope)}x + ${formatNumber(intercept)}`;
         slopeEl.textContent = formatNumber(slope);
         interceptEl.textContent = formatNumber(intercept);
         rSquaredEl.textContent = formatNumber(rSquared);
+        correlationEl.textContent = formatNumber(correlation);
         
         stepsContentEl.textContent = steps;
         stepsEl.style.display = 'block';
@@ -248,13 +255,11 @@
 
         steps += `Step 5: Calculate (x(sub i) - x̅)(y(sub i) - y̅) for each point\n`;
         let sumProducts = 0;
-        let sumXSquares = 0;
         const products = points.map((p, i) => {
           const xDev = p.x - meanX;
           const yDev = p.y - meanY;
           const product = xDev * yDev;
           sumProducts += product;
-          sumXSquares += xDev * xDev;
           return `@i=${i+1} => (${formatNumber(xDev)})(${formatNumber(yDev)}) = ${formatNumber(product)}`;
         }).join('\n');
         steps += `${products}\n\n`;
@@ -262,24 +267,19 @@
         steps += `Step 6: Add all answers from step 5\n`;
         steps += `Sum of products = ${formatNumber(sumProducts)}\n\n`;
 
-        steps += `Step 7: Square all the answers from step 5\n`;
-        const productSquares = points.map((p, i) => {
+        steps += `Step 7: Square each x-deviation (x(sub i) - x̅)²\n`;
+        const xSquares = points.map((p, i) => {
           const xDev = p.x - meanX;
-          const yDev = p.y - meanY;
-          const product = xDev * yDev;
-          const square = product * product;
-          return `@i=${i+1} => (${formatNumber(product)})² = ${formatNumber(square)}`;
+          const square = xDev * xDev;
+          return `@i=${i+1} => (${formatNumber(xDev)})² = ${formatNumber(square)}`;
         }).join('\n');
-        steps += `${productSquares}\n`;
-        const sumProductSquares = points.reduce((sum, p) => {
-          const xDev = p.x - meanX;
-          const yDev = p.y - meanY;
-          const product = xDev * yDev;
-          return sum + product * product;
-        }, 0);
-        steps += `Sum of squares = ${formatNumber(sumProductSquares)}\n\n`;
+        steps += `${xSquares}\n\n`;
 
-        steps += `Step 8: Sum of (x(sub i) - x̅)²\n`;
+        steps += `Step 8: Add all squared x-deviations\n`;
+        const sumXSquares = points.reduce((sum, p) => {
+          const xDev = p.x - meanX;
+          return sum + xDev * xDev;
+        }, 0);
         steps += `Sum of (x(sub i) - x̅)² = ${formatNumber(sumXSquares)}\n\n`;
 
         const slope = sumProducts / sumXSquares;
@@ -297,19 +297,28 @@
 
         let ssResidual = 0;
         let ssTotal = 0;
+        let sumYSquares = 0;
         for (const p of points) {
           const predicted = slope * p.x + intercept;
           ssResidual += (p.y - predicted) ** 2;
-          ssTotal += (p.y - meanY) ** 2;
+          const yDev = p.y - meanY;
+          ssTotal += yDev ** 2;
+          sumYSquares += yDev ** 2;
         }
 
         const rSquared = ssTotal === 0 ? 1 : 1 - ssResidual / ssTotal;
+        const correlationDenominator = Math.sqrt(sumXSquares * sumYSquares);
+        const correlation = correlationDenominator === 0 ? 0 : sumProducts / correlationDenominator;
         
         steps += `Step 11: Final equation\n`;
         steps += `y = ${formatNumber(slope)}x + ${formatNumber(intercept)}\n`;
-        steps += `R² = ${formatNumber(rSquared)}`;
+        steps += `R² = ${formatNumber(rSquared)}\n\n`;
+        steps += `Correlation coefficient (r)\n`;
+        steps += `r = Σ[(x(sub i) - x̅)(y(sub i) - y̅)] / √(Σ(x(sub i) - x̅)² × Σ(y(sub i) - y̅)²)\n`;
+        steps += `r = ${formatNumber(sumProducts)} / √(${formatNumber(sumXSquares)} × ${formatNumber(sumYSquares)})\n`;
+        steps += `r = ${formatNumber(correlation)}`;
         
-        return { slope, intercept, rSquared, steps };
+        return { slope, intercept, rSquared, correlation, steps };
       }
 
       function formatNumber(value) {
@@ -324,6 +333,7 @@
         slopeEl.textContent = '-';
         interceptEl.textContent = '-';
         rSquaredEl.textContent = '-';
+        correlationEl.textContent = '-';
       }
     </script>
   </body>
