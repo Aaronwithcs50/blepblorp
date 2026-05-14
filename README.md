@@ -28,6 +28,7 @@ References:
 - `text` answers → clipboard copy with floating panel fallback
 - `code` answers → copy/log/display for manual execution
 - Overlay badge summarizing actions and counts
+- Optional Auto-Next mode for survey flows (clicks likely next/continue button after answering)
 
 ## Setup
 
@@ -37,3 +38,4 @@ References:
 4. Open extension options and set:
    - Groq model (default: `llama-3.3-70b-versatile`)
    - `GROQ_API_KEY`
+   - (Optional) enable **Auto-Next mode**

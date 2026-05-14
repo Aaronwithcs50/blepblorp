@@ -59,6 +59,7 @@ async function runFlow(tabId) {
 
   if (!pagePayload?.visibleText) return;
 
+  const settings = await chrome.storage.sync.get(['autoNext']);
   const aiResult = await requestGroq(pagePayload);
   const questions = Array.isArray(aiResult?.questions) ? aiResult.questions : [];
   const outcomes = [];
@@ -130,17 +131,43 @@ async function runFlow(tabId) {
     }
   }
 
+  const [{ result: nextClicked }] = await chrome.scripting.executeScript({
+    target: { tabId },
+    args: [Boolean(settings.autoNext)],
+    func: (autoNextEnabled) => {
+      if (!autoNextEnabled) return false;
+      const candidates = Array.from(document.querySelectorAll('button, a, input[type=button], input[type=submit], [role=button]'));
+      const ranked = candidates
+        .filter((el) => !el.disabled && el.offsetParent !== null)
+        .map((el) => {
+          const label = (el.innerText || el.value || el.getAttribute('aria-label') || '').trim().toLowerCase();
+          let score = 0;
+          if (/^next$/.test(label)) score = 100;
+          else if (/(next|continue|proceed|submit|finish|done)/.test(label)) score = 80;
+          else if (/(start|go)/.test(label)) score = 40;
+          return { el, label, score };
+        })
+        .filter((x) => x.score > 0)
+        .sort((a, b) => b.score - a.score);
+
+      if (!ranked.length) return false;
+      ranked[0].el.click();
+      return true;
+    }
+  });
+
   await chrome.scripting.executeScript({
     target: { tabId },
-    args: [outcomes],
-    func: (results) => {
+    args: [outcomes, Boolean(nextClicked)],
+    func: (results, didAutoNext) => {
       const old = document.getElementById('__aiq_overlay');
       if (old) old.remove();
       const badge = document.createElement('div');
       badge.id = '__aiq_overlay';
       badge.style.cssText = 'position:fixed;top:12px;right:12px;background:#0f172a;color:#fff;padding:10px 12px;border-radius:10px;z-index:2147483647;font:12px/1.4 sans-serif;max-width:420px;white-space:pre-wrap;';
       const items = results.map((r, i) => `${i + 1}. ${r.action} — ${r.text}`).join('\n');
-      badge.textContent = `Questions found: ${results.length}\n${items || 'No actions taken.'}`;
+      const nextLine = didAutoNext ? '\nAuto-Next: clicked' : '';
+      badge.textContent = `Questions found: ${results.length}\n${items || 'No actions taken.'}${nextLine}`;
       document.body.appendChild(badge);
       setTimeout(() => badge.remove(), 12000);
     }
