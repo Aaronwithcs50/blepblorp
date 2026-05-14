@@ -1,30 +1,33 @@
 # Page Question AI Chrome Extension (Manifest V3, Groq)
 
-Chrome extension that scans the current page for questions, sends the page context to Groq, and performs one action per detected question:
-- execute JavaScript in-page for code answers
-- copy plain-text answers to clipboard (with on-page fallback if denied)
+Chrome extension that scans the current page for questions, sends context to Groq, and handles each question independently.
+
+## Web Store readiness changes
+
+To make this publishable in the Chrome Web Store, this version avoids remote code execution:
+- It **does not** run AI-returned JavaScript via `eval`/`new Function`.
+- For `answerType: "code"`, it copies the suggested snippet to clipboard (or shows it in-page) and logs it for manual review.
+
+This aligns better with Chrome Web Store policies around remotely hosted/dynamic code behavior.
 
 ## Groq integration
 
-This extension uses Groq's OpenAI-compatible Chat Completions endpoint:
-- Base path: `https://api.groq.com/openai/v1`
-- Endpoint used: `POST /chat/completions`
+- Endpoint: `POST https://api.groq.com/openai/v1/chat/completions`
+- Configurable model + API key in Options page.
 
-Reference: https://console.groq.com/docs and https://console.groq.com/docs/api-reference
+References:
+- https://console.groq.com/docs/overview
+- https://console.groq.com/docs/api-reference
 
 ## Features
 
 - Trigger via toolbar button or shortcut (`Ctrl+Shift+Y` / `Cmd+Shift+Y`)
-- Content script scrapes:
-  - visible text
-  - DOM outline
-  - surrounding code context (`pre`, `code`)
-- Background service worker calls Groq (API key stored in `chrome.storage.sync`)
-- Strict structured model output contract:
+- Scrapes visible text, lightweight DOM outline, and nearby code blocks
+- Structured JSON contract from model:
   - `{ questions: [{ text, answerType: "code"|"text", answer }] }`
-- Per-question independent processing + sequential queue behavior
-- Clipboard fallback panel if write permission is denied
-- On-page overlay with question count and actions taken
+- `text` answers → clipboard copy with floating panel fallback
+- `code` answers → copy/log/display for manual execution
+- Overlay badge summarizing actions and counts
 
 ## Setup
 
@@ -34,8 +37,3 @@ Reference: https://console.groq.com/docs and https://console.groq.com/docs/api-r
 4. Open extension options and set:
    - Groq model (default: `llama-3.3-70b-versatile`)
    - `GROQ_API_KEY`
-
-## Security note
-
-AI-provided JavaScript is executed in the page context for `answerType: "code"`.
-Use cautiously and only on trusted pages.

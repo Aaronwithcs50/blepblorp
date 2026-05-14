@@ -12,8 +12,51 @@ chrome.commands.onCommand.addListener(async (command) => {
 });
 
 async function runFlow(tabId) {
-  const scan = await chrome.tabs.sendMessage(tabId, { type: 'SCAN_PAGE' }).catch(() => null);
-  const pagePayload = scan?.payload;
+  const [{ result: pagePayload }] = await chrome.scripting.executeScript({
+    target: { tabId },
+    func: () => {
+      function getVisibleText(root) {
+        const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, {
+          acceptNode(node) {
+            if (!node.nodeValue || !node.nodeValue.trim()) return NodeFilter.FILTER_REJECT;
+            const parent = node.parentElement;
+            if (!parent) return NodeFilter.FILTER_REJECT;
+            const style = getComputedStyle(parent);
+            if (style.display === 'none' || style.visibility === 'hidden') return NodeFilter.FILTER_REJECT;
+            if (['SCRIPT', 'STYLE', 'NOSCRIPT'].includes(parent.tagName)) return NodeFilter.FILTER_REJECT;
+            return NodeFilter.FILTER_ACCEPT;
+          }
+        });
+
+        const out = [];
+        let node;
+        while ((node = walker.nextNode())) out.push(node.nodeValue.trim());
+        return out.join('\n');
+      }
+
+      const visibleText = getVisibleText(document.body).slice(0, 80000);
+      const codeBlocks = [...document.querySelectorAll('pre, code')]
+        .map((el) => el.innerText.trim())
+        .filter(Boolean)
+        .slice(0, 40);
+
+      const domOutline = [...document.querySelectorAll('h1,h2,h3,p,li,pre,code,button,label')]
+        .slice(0, 400)
+        .map((el) => ({
+          tag: el.tagName.toLowerCase(),
+          text: (el.innerText || '').trim().slice(0, 240)
+        }));
+
+      return {
+        title: document.title,
+        url: location.href,
+        visibleText,
+        domOutline,
+        codeContext: codeBlocks
+      };
+    }
+  });
+
   if (!pagePayload?.visibleText) return;
 
   const aiResult = await requestGroq(pagePayload);
@@ -22,30 +65,46 @@ async function runFlow(tabId) {
 
   for (const q of questions) {
     if (q.answerType === 'code') {
-      await chrome.scripting.executeScript({
+      const snippet = String(q.answer || '').trim();
+      const [{ result: copyStatus }] = await chrome.scripting.executeScript({
         target: { tabId },
-        args: [q.answer],
-        func: (code) => {
+        args: [snippet],
+        func: async (codeSnippet) => {
           try {
-            // eslint-disable-next-line no-new-func
-            const runner = new Function(code);
-            const output = runner();
-            console.log('[AI Answer][code] Executed snippet result:', output);
-          } catch (error) {
-            console.error('[AI Answer][code] Failed to execute snippet:', error);
+            await navigator.clipboard.writeText(codeSnippet);
+            return { copied: true };
+          } catch {
+            return { copied: false };
           }
         }
       });
-      outcomes.push({ text: q.text, action: 'code-executed' });
+
+      await chrome.scripting.executeScript({
+        target: { tabId },
+        args: [snippet, !!copyStatus?.copied],
+        func: (codeSnippet, copied) => {
+          console.log('[AI Answer][code] Suggested JavaScript snippet:\n', codeSnippet);
+          const panel = document.createElement('div');
+          panel.style.cssText = 'position:fixed;bottom:12px;right:12px;max-width:420px;background:#111;color:#fff;padding:10px;border-radius:8px;z-index:2147483647;font:12px/1.4 sans-serif;white-space:pre-wrap;';
+          panel.textContent = copied
+            ? 'Code answer copied to clipboard and logged to console. Review before running manually.'
+            : `Code answer (manual copy needed):\n${codeSnippet}`;
+          document.body.appendChild(panel);
+          setTimeout(() => panel.remove(), 11000);
+        }
+      });
+
+      outcomes.push({ text: q.text, action: copyStatus?.copied ? 'code-copied' : 'code-panel-fallback' });
       continue;
     }
 
+    const textAnswer = String(q.answer || '').trim();
     const [{ result: copyStatus }] = await chrome.scripting.executeScript({
       target: { tabId },
-      args: [q.answer],
-      func: async (textAnswer) => {
+      args: [textAnswer],
+      func: async (answerText) => {
         try {
-          await navigator.clipboard.writeText(textAnswer);
+          await navigator.clipboard.writeText(answerText);
           return { copied: true };
         } catch {
           return { copied: false };
@@ -56,11 +115,11 @@ async function runFlow(tabId) {
     if (!copyStatus?.copied) {
       await chrome.scripting.executeScript({
         target: { tabId },
-        args: [q.answer],
-        func: (textAnswer) => {
+        args: [textAnswer],
+        func: (answerText) => {
           const panel = document.createElement('div');
           panel.style.cssText = 'position:fixed;bottom:12px;right:12px;max-width:360px;background:#111;color:#fff;padding:10px;border-radius:8px;z-index:2147483647;font:12px/1.4 sans-serif;white-space:pre-wrap;';
-          panel.textContent = `Clipboard denied. Answer:\n${textAnswer}`;
+          panel.textContent = `Clipboard denied. Answer:\n${answerText}`;
           document.body.appendChild(panel);
           setTimeout(() => panel.remove(), 10000);
         }
@@ -92,34 +151,25 @@ async function requestGroq(pagePayload) {
   const settings = await chrome.storage.sync.get(['groqApiKey', 'groqModel']);
   const apiKey = settings.groqApiKey;
   const model = settings.groqModel || DEFAULT_MODEL;
-
   if (!apiKey) throw new Error('Missing GROQ API key. Set it in extension options.');
 
-  const systemPrompt = 'You detect questions from webpage context and answer them. Return strict JSON only in the shape {"questions":[{"text":"...","answerType":"code"|"text","answer":"..."}]}. For answerType code, answer must be runnable JavaScript only. For answerType text, provide plain text.';
-  const userPrompt = JSON.stringify(pagePayload);
+  const systemPrompt = 'You detect questions from webpage context and answer them. Return strict JSON only in the shape {"questions":[{"text":"...","answerType":"code"|"text","answer":"..."}]}. For answerType code, provide a JavaScript snippet as plain text for manual review. For answerType text, provide plain text.';
 
   const res = await fetch(GROQ_CHAT_URL, {
     method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${apiKey}`
-    },
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}` },
     body: JSON.stringify({
       model,
       temperature: 0,
       response_format: { type: 'json_object' },
       messages: [
         { role: 'system', content: systemPrompt },
-        { role: 'user', content: userPrompt }
+        { role: 'user', content: JSON.stringify(pagePayload) }
       ]
     })
   });
 
-  if (!res.ok) {
-    const err = await res.text();
-    throw new Error(`Groq request failed: ${res.status} ${err}`);
-  }
-
+  if (!res.ok) throw new Error(`Groq request failed: ${res.status} ${await res.text()}`);
   const data = await res.json();
   return JSON.parse(data.choices?.[0]?.message?.content || '{"questions":[]}');
 }
