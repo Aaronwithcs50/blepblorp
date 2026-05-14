@@ -1,0 +1,26 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="UTF-8" />
+    <title>Page Question AI Options</title>
+    <style>
+      body { font-family: Arial, sans-serif; margin: 24px; max-width: 640px; }
+      label { display:block; margin-top:12px; font-weight:600; }
+      input { width:100%; padding:8px; margin-top:6px; }
+      button { margin-top:14px; padding:8px 12px; }
+      #status { margin-top: 8px; color: #166534; }
+    </style>
+  </head>
+  <body>
+    <h1>Groq Settings</h1>
+    <label>Model
+      <input id="model" placeholder="llama-3.3-70b-versatile" />
+    </label>
+    <label>GROQ API Key
+      <input id="apiKey" type="password" placeholder="Paste GROQ API key" />
+    </label>
+    <button id="save">Save</button>
+    <div id="status"></div>
+    <script src="options.js"></script>
+  </body>
+</html>
