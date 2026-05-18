@@ -1,0 +1,25 @@
+{
+  "manifest_version": 3,
+  "name": "Page Question AI Assistant",
+  "version": "1.2.0",
+  "description": "Detect questions on the current page and answer them using Groq AI.",
+  "permissions": ["activeTab", "scripting", "storage"],
+  "host_permissions": ["https://api.groq.com/*"],
+  "background": {
+    "service_worker": "background.js",
+    "type": "module"
+  },
+  "action": {
+    "default_title": "Answer questions on this page"
+  },
+  "commands": {
+    "run-page-ai": {
+      "suggested_key": {
+        "default": "Ctrl+Shift+Y",
+        "mac": "Command+Shift+Y"
+      },
+      "description": "Scan page for questions and answer"
+    }
+  },
+  "options_page": "options.html"
+}

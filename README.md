@@ -1,19 +1,41 @@
-# Line of Best Fit Calculator (Single HTML File)
+# Page Question AI Chrome Extension (Manifest V3, Groq)
 
-This project is now a simple standalone website in **one file**: `index.html`.
+Chrome extension that scans the current page for questions, sends context to Groq, and handles each question independently.
 
-## Run it
+## Web Store readiness changes
 
-Just open `index.html` in your browser.
+To make this publishable in the Chrome Web Store, this version avoids remote code execution:
+- It **does not** run AI-returned JavaScript via `eval`/`new Function`.
+- For `answerType: "code"`, it copies the suggested snippet to clipboard (or shows it in-page) and logs it for manual review.
 
-No build tools, no install step, no server required.
+This aligns better with Chrome Web Store policies around remotely hosted/dynamic code behavior.
 
-## Use it
+## Groq integration
 
-1. Enter points one per line as `x,y` (for example: `2,5`).
-2. Click **Calculate**.
-3. It computes:
-   - Line-of-best-fit equation: `y = mx + b`
-   - Slope `m`
-   - Intercept `b`
-   - `R²`
+- Endpoint: `POST https://api.groq.com/openai/v1/chat/completions`
+- Configurable model + API key in Options page.
+
+References:
+- https://console.groq.com/docs/overview
+- https://console.groq.com/docs/api-reference
+
+## Features
+
+- Trigger via toolbar button or shortcut (`Ctrl+Shift+Y` / `Cmd+Shift+Y`)
+- Scrapes visible text, lightweight DOM outline, and nearby code blocks
+- Structured JSON contract from model:
+  - `{ questions: [{ text, answerType: "code"|"text", answer }] }`
+- `text` answers → clipboard copy with floating panel fallback
+- `code` answers → copy/log/display for manual execution
+- Overlay badge summarizing actions and counts
+- Optional Auto-Next mode for survey flows (clicks likely next/continue button after answering)
+
+## Setup
+
+1. Open `chrome://extensions`
+2. Enable **Developer mode**
+3. Click **Load unpacked** and select `extension/`
+4. Open extension options and set:
+   - Groq model (default: `llama-3.3-70b-versatile`)
+   - `GROQ_API_KEY`
+   - (Optional) enable **Auto-Next mode**
