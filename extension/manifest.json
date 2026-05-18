@@ -1,10 +1,16 @@
 {
   "manifest_version": 3,
   "name": "Page Question AI Assistant",
-  "version": "1.2.0",
+  "version": "1.3.0",
   "description": "Detect questions on the current page and answer them using Groq AI.",
-  "permissions": ["activeTab", "scripting", "storage"],
-  "host_permissions": ["https://api.groq.com/*"],
+  "permissions": [
+    "activeTab",
+    "scripting",
+    "storage"
+  ],
+  "host_permissions": [
+    "https://api.groq.com/*"
+  ],
   "background": {
     "service_worker": "background.js",
     "type": "module"
