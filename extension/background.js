@@ -29,17 +29,25 @@ async function runFlow(tabId) {
     const outcomes = [];
 
     for (const q of questions) {
-      const [{ result }] = await chrome.scripting.executeScript({
-        target: { tabId },
-        args: [q],
-        func: answerQuestionOnPage
-      });
+      try {
+        const [{ result }] = await chrome.scripting.executeScript({
+          target: { tabId },
+          args: [q],
+          func: answerQuestionOnPage
+        });
 
-      outcomes.push({
-        text: q.text || q.question || q.prompt || 'Question',
-        action: result?.action || 'not-found',
-        detail: result?.detail || ''
-      });
+        outcomes.push({
+          text: q.text || q.question || q.prompt || 'Question',
+          action: result?.action || 'not-found',
+          detail: result?.detail || ''
+        });
+      } catch (error) {
+        outcomes.push({
+          text: q.text || q.question || q.prompt || 'Question',
+          action: 'error',
+          detail: cleanErrorMessage(error)
+        });
+      }
     }
 
     const [{ result: nextClicked }] = await chrome.scripting.executeScript({
@@ -55,7 +63,7 @@ async function runFlow(tabId) {
     });
   } catch (error) {
     console.error('[AI Answer] Run failed:', error);
-    const message = error?.message || String(error) || 'Unknown error';
+    const message = cleanErrorMessage(error);
     await tryShowError(tabId, message);
   }
 }
@@ -359,4 +367,9 @@ Important automation rule: the "answer" value should be the exact visible option
   if (!res.ok) throw new Error(`Groq request failed: ${res.status} ${await res.text()}`);
   const data = await res.json();
   return JSON.parse(data.choices?.[0]?.message?.content || '{"questions":[]}');
+}
+
+function cleanErrorMessage(error) {
+  const raw = error?.message || String(error) || 'Unknown error';
+  return raw.replace(/\s+/g, ' ').trim().slice(0, 300);
 }
