@@ -12,43 +12,72 @@ chrome.commands.onCommand.addListener(async (command) => {
 });
 
 async function runFlow(tabId) {
-  const [{ result: pagePayload }] = await chrome.scripting.executeScript({
-    target: { tabId },
-    func: collectPagePayload
-  });
-
-  if (!pagePayload?.visibleText) return;
-
-  const settings = await chrome.storage.sync.get(['autoNext']);
-  const aiResult = await requestGroq(pagePayload);
-  const questions = Array.isArray(aiResult?.questions) ? aiResult.questions : [];
-  const outcomes = [];
-
-  for (const q of questions) {
-    const [{ result }] = await chrome.scripting.executeScript({
+  try {
+    const [{ result: pagePayload }] = await chrome.scripting.executeScript({
       target: { tabId },
-      args: [q],
-      func: answerQuestionOnPage
+      func: collectPagePayload
     });
 
-    outcomes.push({
-      text: q.text || q.question || q.prompt || 'Question',
-      action: result?.action || 'not-found',
-      detail: result?.detail || ''
+    if (!pagePayload?.visibleText) {
+      await tryShowError(tabId, 'No visible page content found to analyze.');
+      return;
+    }
+
+    const settings = await chrome.storage.sync.get(['autoNext']);
+    const aiResult = await requestGroq(pagePayload);
+    const questions = Array.isArray(aiResult?.questions) ? aiResult.questions : [];
+    const outcomes = [];
+
+    for (const q of questions) {
+      try {
+        const [{ result }] = await chrome.scripting.executeScript({
+          target: { tabId },
+          args: [q],
+          func: answerQuestionOnPage
+        });
+
+        outcomes.push({
+          text: q.text || q.question || q.prompt || 'Question',
+          action: result?.action || 'not-found',
+          detail: result?.detail || ''
+        });
+      } catch (error) {
+        outcomes.push({
+          text: q.text || q.question || q.prompt || 'Question',
+          action: 'error',
+          detail: cleanErrorMessage(error)
+        });
+      }
+    }
+
+    const [{ result: nextClicked }] = await chrome.scripting.executeScript({
+      target: { tabId },
+      args: [Boolean(settings.autoNext)],
+      func: clickNextButton
     });
+
+    await chrome.scripting.executeScript({
+      target: { tabId },
+      args: [outcomes, Boolean(nextClicked)],
+      func: showRunSummary
+    });
+  } catch (error) {
+    console.error('[AI Answer] Run failed:', error);
+    const message = cleanErrorMessage(error);
+    await tryShowError(tabId, message);
   }
+}
 
-  const [{ result: nextClicked }] = await chrome.scripting.executeScript({
-    target: { tabId },
-    args: [Boolean(settings.autoNext)],
-    func: clickNextButton
-  });
-
-  await chrome.scripting.executeScript({
-    target: { tabId },
-    args: [outcomes, Boolean(nextClicked)],
-    func: showRunSummary
-  });
+async function tryShowError(tabId, message) {
+  try {
+    await chrome.scripting.executeScript({
+      target: { tabId },
+      args: [String(message || 'Unknown error')],
+      func: showRunError
+    });
+  } catch {
+    // Ignore pages where injection is blocked (e.g., chrome:// URLs).
+  }
 }
 
 function collectPagePayload() {
@@ -298,6 +327,17 @@ function showRunSummary(results, didAutoNext) {
   setTimeout(() => badge.remove(), 12000);
 }
 
+function showRunError(message) {
+  const old = document.getElementById('__aiq_overlay');
+  if (old) old.remove();
+  const badge = document.createElement('div');
+  badge.id = '__aiq_overlay';
+  badge.style.cssText = 'position:fixed;top:12px;right:12px;background:#7f1d1d;color:#fff;padding:10px 12px;border-radius:10px;z-index:2147483647;font:12px/1.4 sans-serif;max-width:420px;white-space:pre-wrap;';
+  badge.textContent = `AI run failed:\n${message}`;
+  document.body.appendChild(badge);
+  setTimeout(() => badge.remove(), 12000);
+}
+
 async function requestGroq(pagePayload) {
   const settings = await chrome.storage.sync.get(['groqApiKey', 'groqModel']);
   const apiKey = settings.groqApiKey;
@@ -306,9 +346,32 @@ async function requestGroq(pagePayload) {
 
   const systemPrompt = `You detect questions from webpage context and choose the best visible answer for the page automator to select. Return strict JSON only in the shape {"questions":[{"text":"...","answer":"..."}]}.
 
-Use exactly one consistent respondent personality: a reliable, attentive, consistent, calm, reasonable, cooperative, detail-oriented person with moderate and believable opinions. Prefer internally consistent, realistic answers, avoid contradictions, avoid extreme or impossible claims, and read attention checks carefully. If a question asks for demographics or factual identity details, answer truthfully from the available page/context rather than inventing a fake identity.
+You must use ONE stable respondent persona across the entire run so responses are predictable and internally consistent:
+- Tone: careful, calm, cooperative, detail-oriented, realistic, moderate.
+- Behavior: read each question fully, follow instructions, pass attention checks, avoid contradictions.
+- Consistency: never flip between conflicting identities or extreme positions within the same run.
+- Truthfulness: if the page or user-provided context includes factual personal/professional details, use those details; if details are not available, choose neutral/plausible non-extreme options without fabricating impossible claims.
 
-Important automation rule: the "answer" value should be the exact visible option label to click whenever the page has radio buttons, checkboxes, dropdown options, or buttons. For free-text fields, provide the concise text to enter. Do not return JavaScript code.`;
+Survey response policy (high priority):
+1) Eligibility / screener questions:
+   - Provide coherent and consistent answers across product usage, decision-making, brand familiarity, role/seniority, company size, industry, event participation, experience level, demographics, and location.
+   - Keep selections believable and mutually compatible.
+2) Frequency/intensity scales:
+   - Prefer moderate, realistic options unless the page context strongly implies otherwise.
+3) Brand familiarity:
+   - Select only options that are commonly plausible together; avoid selecting every brand unless the prompt explicitly allows "all that apply" and context supports it.
+4) Professional profile:
+   - Keep job title, employee count, and industry aligned (e.g., avoid mismatched combinations).
+5) Demographics:
+   - Keep age, gender identity, income, and region internally consistent within the same run.
+6) Open-text fields:
+   - Keep responses concise, natural, and aligned with earlier answers.
+
+Automation output rules (strict):
+- The "answer" value should be the exact visible option label to click whenever the page has radio buttons, checkboxes, dropdown options, or buttons.
+- For free-text fields, provide concise text to enter.
+- Do not return JavaScript code.
+- Return JSON only.`;
 
   const res = await fetch(GROQ_CHAT_URL, {
     method: 'POST',
@@ -327,4 +390,9 @@ Important automation rule: the "answer" value should be the exact visible option
   if (!res.ok) throw new Error(`Groq request failed: ${res.status} ${await res.text()}`);
   const data = await res.json();
   return JSON.parse(data.choices?.[0]?.message?.content || '{"questions":[]}');
+}
+
+function cleanErrorMessage(error) {
+  const raw = error?.message || String(error) || 'Unknown error';
+  return raw.replace(/\s+/g, ' ').trim().slice(0, 300);
 }
