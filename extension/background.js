@@ -12,43 +12,64 @@ chrome.commands.onCommand.addListener(async (command) => {
 });
 
 async function runFlow(tabId) {
-  const [{ result: pagePayload }] = await chrome.scripting.executeScript({
-    target: { tabId },
-    func: collectPagePayload
-  });
-
-  if (!pagePayload?.visibleText) return;
-
-  const settings = await chrome.storage.sync.get(['autoNext']);
-  const aiResult = await requestGroq(pagePayload);
-  const questions = Array.isArray(aiResult?.questions) ? aiResult.questions : [];
-  const outcomes = [];
-
-  for (const q of questions) {
-    const [{ result }] = await chrome.scripting.executeScript({
+  try {
+    const [{ result: pagePayload }] = await chrome.scripting.executeScript({
       target: { tabId },
-      args: [q],
-      func: answerQuestionOnPage
+      func: collectPagePayload
     });
 
-    outcomes.push({
-      text: q.text || q.question || q.prompt || 'Question',
-      action: result?.action || 'not-found',
-      detail: result?.detail || ''
+    if (!pagePayload?.visibleText) {
+      await tryShowError(tabId, 'No visible page content found to analyze.');
+      return;
+    }
+
+    const settings = await chrome.storage.sync.get(['autoNext']);
+    const aiResult = await requestGroq(pagePayload);
+    const questions = Array.isArray(aiResult?.questions) ? aiResult.questions : [];
+    const outcomes = [];
+
+    for (const q of questions) {
+      const [{ result }] = await chrome.scripting.executeScript({
+        target: { tabId },
+        args: [q],
+        func: answerQuestionOnPage
+      });
+
+      outcomes.push({
+        text: q.text || q.question || q.prompt || 'Question',
+        action: result?.action || 'not-found',
+        detail: result?.detail || ''
+      });
+    }
+
+    const [{ result: nextClicked }] = await chrome.scripting.executeScript({
+      target: { tabId },
+      args: [Boolean(settings.autoNext)],
+      func: clickNextButton
     });
+
+    await chrome.scripting.executeScript({
+      target: { tabId },
+      args: [outcomes, Boolean(nextClicked)],
+      func: showRunSummary
+    });
+  } catch (error) {
+    console.error('[AI Answer] Run failed:', error);
+    const message = error?.message || String(error) || 'Unknown error';
+    await tryShowError(tabId, message);
   }
+}
 
-  const [{ result: nextClicked }] = await chrome.scripting.executeScript({
-    target: { tabId },
-    args: [Boolean(settings.autoNext)],
-    func: clickNextButton
-  });
-
-  await chrome.scripting.executeScript({
-    target: { tabId },
-    args: [outcomes, Boolean(nextClicked)],
-    func: showRunSummary
-  });
+async function tryShowError(tabId, message) {
+  try {
+    await chrome.scripting.executeScript({
+      target: { tabId },
+      args: [String(message || 'Unknown error')],
+      func: showRunError
+    });
+  } catch {
+    // Ignore pages where injection is blocked (e.g., chrome:// URLs).
+  }
 }
 
 function collectPagePayload() {
@@ -294,6 +315,17 @@ function showRunSummary(results, didAutoNext) {
   const items = results.map((r, i) => `${i + 1}. ${r.action}${r.detail ? ` (${r.detail})` : ''} — ${r.text}`).join('\n');
   const nextLine = didAutoNext ? '\nAuto-Next: clicked' : '';
   badge.textContent = `Questions found: ${results.length}\n${items || 'No actions taken.'}${nextLine}`;
+  document.body.appendChild(badge);
+  setTimeout(() => badge.remove(), 12000);
+}
+
+function showRunError(message) {
+  const old = document.getElementById('__aiq_overlay');
+  if (old) old.remove();
+  const badge = document.createElement('div');
+  badge.id = '__aiq_overlay';
+  badge.style.cssText = 'position:fixed;top:12px;right:12px;background:#7f1d1d;color:#fff;padding:10px 12px;border-radius:10px;z-index:2147483647;font:12px/1.4 sans-serif;max-width:420px;white-space:pre-wrap;';
+  badge.textContent = `AI run failed:\n${message}`;
   document.body.appendChild(badge);
   setTimeout(() => badge.remove(), 12000);
 }
